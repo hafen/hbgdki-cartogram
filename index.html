@@ -69,12 +69,20 @@
     stroke-width: 0.5px;
     cursor: pointer;
   }
+  .barRow {
+    fill: #ddd;
+    cursor: pointer;
+  }
+  .barRowSelected {
+    fill: #bbb;
+  }
   #info {
     position: absolute;
     visibility: hidden;
     bottom: 0;
     padding: 15px;
-    font-size: 18px;
+    padding-bottom: 5px;
+    font-size: 16px;
   }
 </style>
 <body>
@@ -83,7 +91,7 @@
     <p>
       Click on a row of the chart to view the map as a <a href="https://en.wikipedia.org/wiki/Cartogram" target="_blank">cartogram</a> for that variable.</p>
     <p>
-      Click <a id="mapClick" href="#">here</a> to view the original map.
+      Click a selected row to view the original map.
     </p>
   </div>
 </div>
@@ -244,6 +252,10 @@
     .attr("id", "labels")
     .selectAll("text");
 
+  var barRows = svg.append("g")
+    .attr('transform', "translate(300," + window.innerHeight * 0.75 + ")")
+    .attr("id", "barRows");
+
   var bars = svg.append("g")
     .attr('transform', "translate(300," + window.innerHeight * 0.75 + ")")
     .attr("id", "bars");
@@ -255,6 +267,34 @@
     { crds: [80, 80], name: "EUROPE/MIDDLE EAST", color: "#7E6C34" },
     { crds: [-152, 36], name: "UNITED STATES", color: "#7B9FA0" }
   ];
+
+  function hoverVar(id) {
+    d3.select("#" + id + "-hover").style("opacity", 1);
+  }
+
+  function unhoverVar(id) {
+    var el = d3.select("#" + id + "-hover");
+    if (el.attr("class") !== "barRowSelected") {
+      d3.select("#" + id + "-hover").style("opacity", 0);
+    }
+  }
+
+  function selectVar(id) {
+    var el = d3.select("#" + id + "-hover");
+    if (el.attr("class") === "barRow") {
+      // set it as selected and deselect everything else and trigger carto
+      d3.selectAll(".barRow, .barRowSelected")
+        .attr("class", "barRow")
+        .style("opacity", 0);
+      el.attr("class", "barRowSelected")
+        .style("opacity", 1);
+      transitionMap(id);
+    } else {
+      // deselect and trigger map
+      el.attr("class", "barRow");
+      transitionMap("map");
+    }
+  }
 
   function drawBars() {
     bars.attr('transform', "translate(300," + window.innerHeight * 0.75 + ")");
@@ -278,11 +318,11 @@
       .tickSizeInner(-window.innerHeight * 0.25);
 
     var aLabels = [
-      { id: 'micro', label: 'Microdata Population' },
-      { id: 'macro', label: 'Macrodata Population' },
-      { id: 'xsect', label: 'Cross-Sectional Studies Subjects' },
-      { id: 'longi', label: 'Longitudinal Studies Subjects' },
-      { id: 'clinical', label: 'All Clinical Studies Subjects' }
+      { n: 0, id: 'micro', label: 'Microdata Population' },
+      { n: 1, id: 'macro', label: 'Macrodata Population' },
+      { n: 2, id: 'xsect', label: 'Cross-Sectional Studies Subjects' },
+      { n: 3, id: 'longi', label: 'Longitudinal Studies Subjects' },
+      { n: 4, id: 'clinical', label: 'All Clinical Studies Subjects' }
     ];
 
     var yaxis = d3.axisLeft(ys)
@@ -302,13 +342,42 @@
       .attr('class', 'y axis')
       .call(yaxis);
 
-    d3.selectAll(".y.axis .tick").on("click", function(d) {
-      transitionMap(aLabels[d].id)
-    });
+    d3.selectAll(".y.axis .tick")
+      .on("click", function(d) {
+        selectVar(aLabels[d].id)
+      })
+      .on("mouseover", function(d) {
+        hoverVar(aLabels[d].id);
+      })
+      .on("mouseout", function(d) {
+        unhoverVar(aLabels[d].id);
+      });
 
     d3.select("#mapClick").on("click", function() {
       transitionMap("map");
     })
+
+    barRows.append('g')
+      .selectAll("rect")
+      .data(aLabels)
+      .enter()
+      .append("rect")
+        .attr("class", "barRow")
+        .attr("id", function(d) { return d.id + "-hover"; })
+        .attr("x", -280)
+        .attr("y", function(d) { return ys(d.n + 0.48); })
+        .attr("width", 280 + window.innerWidth - 600 + 10)
+        .attr("height", ys(0) - ys(0.96))
+        .style("opacity", 0)
+        .on("mouseover", function(d) {
+          hoverVar(d.id);
+        })
+        .on("mouseout", function(d) {
+          unhoverVar(d.id);
+        })
+        .on("click", function(d) {
+
+        })
 
     bars.append('g')
       .selectAll("rect")
@@ -317,7 +386,7 @@
       .append("rect")
         .attr("class", "bar")
         // .attr("id", function(d) { return (d.id); })
-        .attr("fill", function(d) { return (d.color); })
+        .attr("fill", function(d) { return d.color; })
         .attr("x", function(d) { return xs(d.cpct - d.pct); })
         .attr("y", function(d) { return ys(d.idx + 0.3); })
         .attr("width", function(d) { return xs(d.pct); })
@@ -325,9 +394,9 @@
         .attr("opacity", 0.8)
         .on('mousemove', function(d) {
           // var crds = projection([d.properties.lon, d.properties.lat]);
+          hoverVar(d.variable);
           var crds = [0, 0];
           crds = d3.mouse(this);
-          debugger;
           tooltip
             .transition()
             .duration(100)
@@ -337,16 +406,16 @@
               fmt(d.count) + " (" + (Math.round(d.pct * 100) / 100) + "%)")
             .style('left', crds[0] + 300 + "px")
             .style('top', (crds[1] + window.innerHeight * 0.75 - 44) + "px");
-          d3.select(this).attr("fill", colorLuminance(d.color, -0.1));
+          d3.event.stopPropagation();
         })
         .on('mouseout', function(d) {
           tooltip.transition()
             .duration(100)
             .style('opacity', 0);
-          d3.select(this).attr("fill", d.color);
+          unhoverVar(d.variable);
         })
         .on('click', function(d) {
-          transitionMap(d.variable);
+          selectVar(d.variable);
         });
   }
 
@@ -480,7 +549,7 @@
     gratOutline.attr("d", mapPath.path);
 
     labels
-      .attr("x", function(d) { debugger; return mapPath.projection(d.crds)[0]; })
+      .attr("x", function(d) { return mapPath.projection(d.crds)[0]; })
       .attr("y", function(d) { return mapPath.projection(d.crds)[1]; })
 
     drawBars();
