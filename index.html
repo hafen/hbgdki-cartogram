@@ -298,8 +298,10 @@
 
   function drawBars() {
     bars.attr('transform', "translate(300," + window.innerHeight * 0.75 + ")");
+    barRows.attr('transform', "translate(300," + window.innerHeight * 0.75 + ")");
     bars.selectAll(".bar").remove();
     bars.selectAll(".axis").remove();
+    barRows.selectAll("rect").remove();
 
     var xs = d3.scaleLinear()
       .domain([0, 100])
@@ -362,13 +364,15 @@
       .data(aLabels)
       .enter()
       .append("rect")
-        .attr("class", "barRow")
+        .attr("class", function(d)
+          { return d.id === curProj ? "barRowSelected" : "barRow"; })
         .attr("id", function(d) { return d.id + "-hover"; })
         .attr("x", -280)
         .attr("y", function(d) { return ys(d.n + 0.48); })
         .attr("width", 280 + window.innerWidth - 600 + 10)
         .attr("height", ys(0) - ys(0.96))
-        .style("opacity", 0)
+        .style("opacity", function(d)
+          { return d.id === curProj ? 1 : 0; })
         .on("mouseover", function(d) {
           hoverVar(d.id);
         })
