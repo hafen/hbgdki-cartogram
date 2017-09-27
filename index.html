@@ -103,6 +103,25 @@
 <script src="bars.js"></script>
 
 <script>
+  var fullScreen = true;
+  // var fullScreen = false;
+
+  function adjustContainerSize () {
+    if (fullScreen === true) {
+      d3.select("#container").style("height", window.innerHeight + "px");
+      d3.select("#container").style("width", window.innerWidth + "px");
+    }
+  }
+  adjustContainerSize();
+
+  function getWidth() {
+    return d3.select("#container").node().getBoundingClientRect().width;
+  }
+
+  function getHeight() {
+    return d3.select("#container").node().getBoundingClientRect().height;
+  }
+
   function shiftInterpolate(x, y, varName) {
     var xdelta = 3.6;
     var ydelta = 3.6;
@@ -158,8 +177,8 @@
   }
 
   function getMapPath() {
-    var width = window.innerWidth;
-    var height = window.innerHeight * 0.8;
+    var width = getWidth();
+    var height = getHeight() * 0.8;
 
     // var projection = d3.geoMercator()
     var projectionWinkel3 = d3.geoWinkel3()
@@ -173,8 +192,8 @@
   }
 
   function getCartPath(which) {
-    var width = window.innerWidth;
-    var height = window.innerHeight * 0.8;
+    var width = getWidth();
+    var height = getHeight() * 0.8;
 
     var aspect = 0.5; // 360 degrees around and 180 degrees up / down
     var xOffset = 0;
@@ -208,23 +227,23 @@
   }
 
   d3.select("#info")
-    .style("left", (window.innerWidth - 300) + "px")
+    .style("left", (getWidth() - 300) + "px")
     .style("visibility", "visible");
 
   var mapPath = getMapPath();
   var cartPath = getCartPath();
 
   var svg = d3.select("#container").append("svg")
-    .attr("width", window.innerWidth)
-    .attr("height", window.innerHeight);
+    .attr("width", getWidth())
+    .attr("height", getHeight());
 
   var clipRect = svg.append("clipPath")
     .attr("id", "map-clip")
     .append("rect")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", window.innerWidth)
-      .attr("height", window.innerHeight * 0.7);
+      .attr("width", getWidth())
+      .attr("height", getHeight() * 0.7);
 
   var grat = svg.append("g")
     .attr("id", "graticules");
@@ -253,11 +272,11 @@
     .selectAll("text");
 
   var barRows = svg.append("g")
-    .attr('transform', "translate(300," + window.innerHeight * 0.75 + ")")
+    .attr('transform', "translate(300," + getHeight() * 0.75 + ")")
     .attr("id", "barRows");
 
   var bars = svg.append("g")
-    .attr('transform', "translate(300," + window.innerHeight * 0.75 + ")")
+    .attr('transform', "translate(300," + getHeight() * 0.75 + ")")
     .attr("id", "bars");
 
   var labelCoords = [
@@ -297,19 +316,19 @@
   }
 
   function drawBars() {
-    bars.attr('transform', "translate(300," + window.innerHeight * 0.75 + ")");
-    barRows.attr('transform', "translate(300," + window.innerHeight * 0.75 + ")");
+    bars.attr('transform', "translate(300," + getHeight() * 0.75 + ")");
+    barRows.attr('transform', "translate(300," + getHeight() * 0.75 + ")");
     bars.selectAll(".bar").remove();
     bars.selectAll(".axis").remove();
     barRows.selectAll("rect").remove();
 
     var xs = d3.scaleLinear()
       .domain([0, 100])
-      .range([0, window.innerWidth - 600]);
+      .range([0, getWidth() - 600]);
 
     var ys = d3.scaleLinear()
       .domain([-0.5, 4.5])
-      .range([window.innerHeight * 0.25, 0]);
+      .range([getHeight() * 0.25, 0]);
 
     var xaxis = d3.axisTop(xs)
       .scale(xs)
@@ -317,7 +336,7 @@
       .tickFormat(function(d) { return d + "%"; })
       .tickPadding(12)
       .tickSizeOuter(0)
-      .tickSizeInner(-window.innerHeight * 0.25);
+      .tickSizeInner(-getHeight() * 0.25);
 
     var aLabels = [
       { n: 0, id: 'micro', label: 'Microdata Population' },
@@ -369,7 +388,7 @@
         .attr("id", function(d) { return d.id + "-hover"; })
         .attr("x", -280)
         .attr("y", function(d) { return ys(d.n + 0.48); })
-        .attr("width", 280 + window.innerWidth - 600 + 10)
+        .attr("width", 280 + getWidth() - 600 + 10)
         .attr("height", ys(0) - ys(0.96))
         .style("opacity", function(d)
           { return d.id === curProj ? 1 : 0; })
@@ -409,7 +428,7 @@
             .html("<strong>" + d.region + "</strong>" + "<br />" +
               fmt(d.count) + " (" + (Math.round(d.pct * 100) / 100) + "%)")
             .style('left', crds[0] + 300 + "px")
-            .style('top', (crds[1] + window.innerHeight * 0.75 - 44) + "px");
+            .style('top', (crds[1] + getHeight() * 0.75 - 44) + "px");
           d3.event.stopPropagation();
         })
         .on('mouseout', function(d) {
@@ -532,13 +551,19 @@
   });
 
   window.addEventListener('resize', () => {
+
+    adjustContainerSize();
+
+    var width = getWidth();
+    var height = getHeight();
+
     svg
-      .attr("width", window.innerWidth)
-      .attr("height", window.innerHeight);
+      .attr("width", width)
+      .attr("height", height);
 
     clipRect
-      .attr("width", window.innerWidth)
-      .attr("height", window.innerHeight * 0.7);
+      .attr("width", width)
+      .attr("height", height * 0.7);
 
     var mapPath = getMapPath();
     var curPath;
@@ -559,7 +584,7 @@
     drawBars();
 
     d3.select("#info")
-      .style("left", (window.innerWidth - 300) + "px")
+      .style("left", (width - 300) + "px")
       .style("visibility", "visible");
   });
 
